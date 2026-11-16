@@ -1,0 +1,131 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "Copy",
+        "typeProperties": {
+          "source": {
+            "type": "BinarySource",
+            "formatSettings": {
+              "type": "BinaryReadSettings"
+            },
+            "storeSettings": {
+              "type": "HttpReadSettings",
+              "requestMethod": "GET"
+            },
+            "datasetSettings": {
+              "type": "Binary",
+              "typeProperties": {
+                "location": {
+                  "type": "HttpServerLocation",
+                  "relativeUrl": {
+                    "value": "@concat(\n    'yellow_tripdata_',\n    string(pipeline().parameters.source_year),\n    '-',\n    if(\n        less(pipeline().parameters.source_month, 10),\n        concat('0', string(pipeline().parameters.source_month)),\n        string(pipeline().parameters.source_month)\n    ),\n    '.parquet'\n)",
+                    "type": "Expression"
+                  }
+                }
+              },
+              "externalReferences": {
+                "connection": "43c17968-17dc-4785-b6bf-20a1c977fd57"
+              },
+              "annotations": []
+            }
+          },
+          "sink": {
+            "type": "BinarySink",
+            "storeSettings": {
+              "type": "LakehouseWriteSettings"
+            },
+            "datasetSettings": {
+              "type": "Binary",
+              "typeProperties": {
+                "location": {
+                  "type": "LakehouseLocation",
+                  "folderPath": {
+                    "value": "@concat(\n    'nyc_taxi/yellow/',\n    string(pipeline().parameters.source_year),\n    '/',\n    if(\n        less(pipeline().parameters.source_month, 10),\n        concat('0', string(pipeline().parameters.source_month)),\n        string(pipeline().parameters.source_month)\n    )\n)",
+                    "type": "Expression"
+                  },
+                  "fileName": {
+                    "value": "@concat(\n    'yellow_tripdata_',\n    string(pipeline().parameters.source_year),\n    '-',\n    if(\n        less(pipeline().parameters.source_month, 10),\n        concat('0', string(pipeline().parameters.source_month)),\n        string(pipeline().parameters.source_month)\n    ),\n    '.parquet'\n)",
+                    "type": "Expression"
+                  }
+                }
+              },
+              "linkedService": {
+                "name": "lh_bronze",
+                "properties": {
+                  "type": "Lakehouse",
+                  "typeProperties": {
+                    "artifactId": "e8b7d5b0-ce42-93e6-414c-a76f3f4301b6",
+                    "workspaceId": "00000000-0000-0000-0000-000000000000",
+                    "rootFolder": "Files"
+                  },
+                  "annotations": []
+                }
+              },
+              "annotations": []
+            }
+          },
+          "enableStaging": false
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "copy_nyc_taxi_month",
+        "dependsOn": []
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "d90ebadf-2d0d-9c44-4151-b33273ec3190",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "parameters": {
+            "source_year": {
+              "value": {
+                "value": "@pipeline().parameters.source_year",
+                "type": "Expression"
+              },
+              "type": "int"
+            },
+            "source_month": {
+              "value": {
+                "value": "@pipeline().parameters.source_month",
+                "type": "Expression"
+              },
+              "type": "int"
+            }
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "transform_taxi_silver",
+        "dependsOn": [
+          {
+            "activity": "copy_nyc_taxi_month",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "source_year": {
+        "type": "int",
+        "defaultValue": 2024
+      },
+      "source_month": {
+        "type": "int",
+        "defaultValue": 1
+      }
+    }
+  }
+}
