@@ -1,0 +1,29 @@
+{
+  "formatVersion": "202502",
+  "computeEngineSettings": {
+    "allowModernEvaluationEngine": true
+  },
+  "name": "df_ingest_openaq",
+  "queryGroups": [],
+  "documentLocale": "en-US",
+  "queriesMetadata": {
+    "DefaultDestination": {
+      "queryId": "a214c486-8482-4019-a850-d0a05fbcf470",
+      "queryName": "DefaultDestination",
+      "isHidden": true,
+      "loadEnabled": false
+    },
+    "openaq_daily_raw": {
+      "queryId": "f03813b7-6380-4a3c-9c11-e3f9bb48bb8f",
+      "queryName": "openaq_daily_raw",
+      "loadEnabled": false
+    }
+  },
+  "connections": [
+    {
+      "path": "Lakehouse",
+      "kind": "Lakehouse",
+      "connectionId": "{\"ClusterId\":\"fd9aaea7-2a32-4dff-89b0-4f35cb334387\",\"DatasourceId\":\"fe0f5760-fd6e-4ad5-87af-7164efad94d4\"}"
+    }
+  ]
+}
