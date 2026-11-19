@@ -30,7 +30,13 @@ shared worldbank_gdp_raw = let
     ),
     Typed = Table.TransformColumnTypes(
         Renamed,
-        {{"gdp_year", Int64.Type}, {"gdp_usd", type number}}
+        {
+            {"country_code", type text},
+            {"country_name", type text},
+            {"indicator_code", type text},
+            {"gdp_year", Int64.Type},
+            {"gdp_usd", type number}
+        }
     )
 in
     Typed;
