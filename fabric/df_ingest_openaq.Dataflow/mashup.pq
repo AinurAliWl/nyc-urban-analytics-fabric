@@ -7,39 +7,67 @@ shared openaq_daily_raw = let
     Workspace = Source{[workspaceId = "ff9401b1-9897-44bb-a371-52cdaf97b9b3"]}[Data],
     Bronze = Workspace{[lakehouseId = "3f4301b6-a76f-414c-93e6-ce42e8b7d5b0"]}[Data],
     Files = Bronze{[Id = "Files", ItemKind = "Folder"]}[Data],
-    OpenAQFolder = Files{[Name = "openaq"]}[Content],
-    File = OpenAQFolder{[Name = "openaq_ccny_673_2024_01_02.json"]}[Content],
-    Payload = Json.Document(File, TextEncoding.Utf8),
+    PM25Folder = Files{[Name = "openaq_pm25"]}[Content],
 
-    Rows = List.Transform(Payload[results], (row) => [
-        location_id = 384,
-        sensor_id = 673,
-        pollutant = row[parameter][name],
-        unit = row[parameter][units],
-        local_date = Date.FromText(
-            Text.Start(row[period][datetimeFrom][local], 10),
-            [Format = "yyyy-MM-dd"]
-        ),
-        daily_mean = row[value],
-        observed_hours = row[coverage][observedCount],
-        expected_hours = row[coverage][expectedCount]
-    ]),
+    Batches = {
+        [LocationId = 384, SensorId = 673, Year = 2022],
+        [LocationId = 626, SensorId = 1102, Year = 2022],
+        [LocationId = 384, SensorId = 673, Year = 2024],
+        [LocationId = 626, SensorId = 1102, Year = 2024],
+        [LocationId = 631, SensorId = 1152, Year = 2024]
+    },
 
-    Daily = Table.FromRecords(Rows, type table [
-        location_id = number,
-        sensor_id = number,
-        pollutant = text,
-        unit = text,
-        local_date = date,
-        daily_mean = nullable number,
-        observed_hours = nullable number,
-        expected_hours = nullable number
-    ]),
+    ReadBatch = (batch as record) as table =>
+        let
+            FileName = "openaq_pm25_" & Text.From(batch[SensorId]) & "_"
+                & Text.From(batch[Year]) & "_jan_feb.json",
+            File = PM25Folder{[Name = FileName]}[Content],
+            Payload = Json.Document(File, TextEncoding.Utf8),
+            FirstDay = #date(batch[Year], 1, 1),
+            EndDay = #date(batch[Year], 3, 1),
+            Rows = List.Transform(
+                Payload[results],
+                (reading as record) as record =>
+                    let
+                        Coverage = if reading[coverage]? is record
+                            then reading[coverage]
+                            else []
+                    in
+                        [
+                            location_id = batch[LocationId],
+                            sensor_id = batch[SensorId],
+                            pollutant = reading[parameter][name],
+                            unit = reading[parameter][units],
+                            local_date = Date.FromText(
+                                Text.Start(reading[period][datetimeFrom][local], 10),
+                                [Format = "yyyy-MM-dd", Culture = "en-US"]
+                            ),
+                            daily_mean = reading[value]?,
+                            observed_hours = Coverage[observedCount]?,
+                            expected_hours = Coverage[expectedCount]?
+                        ]
+            ),
+            Daily = Table.FromRecords(Rows),
+            InPeriod = Table.SelectRows(
+                Daily,
+                each [local_date] >= FirstDay and [local_date] < EndDay
+            )
+        in
+            InPeriod,
 
-    InPeriod = Table.SelectRows(
-        Daily,
-        each [local_date] >= #date(2024, 1, 1)
-          and [local_date] < #date(2024, 3, 1)
+    Combined = Table.Combine(List.Transform(Batches, ReadBatch)),
+    Typed = Table.TransformColumnTypes(
+        Combined,
+        {
+            {"location_id", Int64.Type},
+            {"sensor_id", Int64.Type},
+            {"pollutant", type text},
+            {"unit", type text},
+            {"local_date", type date},
+            {"daily_mean", type number},
+            {"observed_hours", Int64.Type},
+            {"expected_hours", Int64.Type}
+        }
     )
 in
-    InPeriod;
+    Typed;

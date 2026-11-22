@@ -140,6 +140,26 @@ print(f"Prepared columns: {len(df_taxi_silver.columns)}")
 
 # CELL ********************
 
+from delta.tables import DeltaTable
+
+if DeltaTable.isDeltaTable(spark, silver_table_path):
+    target_schema = spark.read.format("delta").load(silver_table_path).schema
+
+    source_vendor_type = df_taxi_silver.schema["VendorID"].dataType.simpleString()
+    target_vendor_type = target_schema["VendorID"].dataType.simpleString()
+    print(f"VendorID type: {source_vendor_type} -> {target_vendor_type}")
+
+    df_taxi_silver = df_taxi_silver.to(target_schema)
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
 month_condition = (
     f"source_year = {source_year} "
     f"AND source_month = {source_month}"

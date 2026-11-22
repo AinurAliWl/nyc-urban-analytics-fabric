@@ -1,0 +1,29 @@
+{
+  "formatVersion": "202502",
+  "computeEngineSettings": {
+    "allowModernEvaluationEngine": true
+  },
+  "name": "df_ingest_epa_no2",
+  "queryGroups": [],
+  "documentLocale": "en-US",
+  "queriesMetadata": {
+    "epa_no2_daily_raw": {
+      "queryId": "559a15ae-6394-4c9b-9c56-4860101ea431",
+      "queryName": "epa_no2_daily_raw",
+      "loadEnabled": false
+    },
+    "epa_no2_daily_raw_DataDestination": {
+      "queryId": "00e370b0-8208-4dcc-97a4-9ee642737bc7",
+      "queryName": "epa_no2_daily_raw_DataDestination",
+      "isHidden": true,
+      "loadEnabled": false
+    }
+  },
+  "connections": [
+    {
+      "path": "Lakehouse",
+      "kind": "Lakehouse",
+      "connectionId": "{\"ClusterId\":\"fd9aaea7-2a32-4dff-89b0-4f35cb334387\",\"DatasourceId\":\"fe0f5760-fd6e-4ad5-87af-7164efad94d4\"}"
+    }
+  ]
+}

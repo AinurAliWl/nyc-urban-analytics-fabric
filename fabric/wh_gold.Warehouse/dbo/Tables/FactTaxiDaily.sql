@@ -7,7 +7,9 @@ CREATE TABLE [dbo].[FactTaxiDaily] (
     [distance_sum_miles]        DECIMAL (28, 4) NULL,
     [valid_distance_trip_count] BIGINT          NOT NULL,
     [duration_sum_seconds]      BIGINT          NULL,
-    [valid_duration_trip_count] BIGINT          NOT NULL
+    [valid_duration_trip_count] BIGINT          NOT NULL,
+    [fare_sum_usd]              DECIMAL (28, 2) NULL,
+    [fare_trip_count]           BIGINT          NULL
 );
 
 

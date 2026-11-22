@@ -244,3 +244,70 @@ plt.show()
 # META   "language": "python",
 # META   "language_group": "jupyter_python"
 # META }
+
+# CELL ********************
+
+# MAGIC %%tsql -artifact wh_gold -type Warehouse
+# MAGIC WITH taxi_by_day AS (
+# MAGIC     SELECT
+# MAGIC         date_key,
+# MAGIC         SUM(trip_count) AS trip_count,
+# MAGIC         SUM(fare_sum_usd) AS fare_usd,
+# MAGIC         SUM(fare_trip_count) AS fare_trip_count,
+# MAGIC         SUM(total_amount_usd) AS total_usd,
+# MAGIC         SUM(amount_trip_count) AS amount_trip_count
+# MAGIC     FROM dbo.FactTaxiDaily
+# MAGIC     GROUP BY date_key
+# MAGIC )
+# MAGIC SELECT
+# MAGIC     d.calendar_year,
+# MAGIC     d.calendar_month,
+# MAGIC     SUM(t.trip_count) AS trip_count,
+# MAGIC     CAST(SUM(t.fare_usd) / NULLIF(SUM(t.fare_trip_count), 0)
+# MAGIC         AS decimal(12, 2)) AS avg_metered_fare_usd,
+# MAGIC     CAST(SUM(t.total_usd) / NULLIF(SUM(t.amount_trip_count), 0)
+# MAGIC         AS decimal(12, 2)) AS avg_total_per_trip_usd,
+# MAGIC     CAST(
+# MAGIC         SUM(CAST(t.total_usd AS decimal(22, 2)) / fx.usd_per_eur)
+# MAGIC         / NULLIF(SUM(t.amount_trip_count), 0)
+# MAGIC         AS decimal(12, 2)
+# MAGIC     ) AS avg_total_per_trip_eur
+# MAGIC FROM taxi_by_day AS t
+# MAGIC JOIN dbo.DimDate AS d
+# MAGIC     ON d.date_key = t.date_key
+# MAGIC JOIN dbo.DimFX AS fx
+# MAGIC     ON fx.date_key = t.date_key
+# MAGIC     AND fx.base_currency = 'EUR'
+# MAGIC     AND fx.quote_currency = 'USD'
+# MAGIC GROUP BY d.calendar_year, d.calendar_month
+# MAGIC ORDER BY d.calendar_year, d.calendar_month;
+
+# METADATA ********************
+
+# META {
+# META   "language": "sql",
+# META   "language_group": "jupyter_python"
+# META }
+
+# CELL ********************
+
+# MAGIC %%tsql -artifact wh_gold -type Warehouse
+# MAGIC SELECT TOP (10)
+# MAGIC     z.location_id,
+# MAGIC     z.borough,
+# MAGIC     z.zone_name,
+# MAGIC     SUM(t.trip_count) AS pickup_count
+# MAGIC FROM dbo.FactTaxiDaily AS t
+# MAGIC JOIN dbo.DimZone AS z
+# MAGIC     ON z.location_id = t.pickup_location_id
+# MAGIC WHERE t.date_key BETWEEN 20240101 AND 20240229
+# MAGIC   AND z.borough IN ('Bronx', 'Brooklyn', 'Manhattan', 'Queens', 'Staten Island')
+# MAGIC GROUP BY z.location_id, z.borough, z.zone_name
+# MAGIC ORDER BY pickup_count DESC, z.location_id;
+
+# METADATA ********************
+
+# META {
+# META   "language": "sql",
+# META   "language_group": "jupyter_python"
+# META }

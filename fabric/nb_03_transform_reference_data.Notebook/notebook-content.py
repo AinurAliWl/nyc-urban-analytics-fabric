@@ -6,7 +6,18 @@
 # META   "kernel_info": {
 # META     "name": "synapse_pyspark"
 # META   },
-# META   "dependencies": {}
+# META   "dependencies": {
+# META     "lakehouse": {
+# META       "default_lakehouse": "6efa6296-f5ce-4652-9e2f-a9d7ce14b70e",
+# META       "default_lakehouse_name": "lh_silver",
+# META       "default_lakehouse_workspace_id": "ff9401b1-9897-44bb-a371-52cdaf97b9b3",
+# META       "known_lakehouses": [
+# META         {
+# META           "id": "6efa6296-f5ce-4652-9e2f-a9d7ce14b70e"
+# META         }
+# META       ]
+# META     }
+# META   }
 # META }
 
 # CELL ********************
@@ -177,6 +188,81 @@ for table_name, df, _ in silver_tables:
         )
 
     print(f"Saved lh_silver.dbo.{table_name}: {saved_rows:,} rows")
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "synapse_pyspark"
+# META }
+
+# CELL ********************
+
+from pyspark.sql import functions as F
+
+epa_raw = spark.table("lh_bronze.dbo.epa_no2_daily_raw")
+target_table = "lh_silver.dbo.epa_no2_daily"
+
+expected_format = (
+    (F.col("parameter_code") == "42602")
+    & (F.col("sample_duration") == "1 HOUR")
+    & (F.col("units_of_measure") == "Parts per billion")
+)
+if epa_raw.where(~F.coalesce(expected_format, F.lit(False))).limit(1).count():
+    raise ValueError("Expected EPA NO2 hourly observations summarized in ppb.")
+
+epa_silver = (
+    epa_raw.select(
+        F.to_date("date_local", "yyyy-MM-dd").alias("local_date"),
+        F.concat_ws("-", "state_code", "county_code", "site_num").alias("aqs_site_id"),
+        F.col("parameter_code"),
+        F.col("poc"),
+        F.col("local_site_name").alias("station_name"),
+        F.col("county_name"),
+        F.col("latitude").cast("double").alias("latitude"),
+        F.col("longitude").cast("double").alias("longitude"),
+        F.lit("epa_aqs").alias("source_system"),
+        F.lit("no2").alias("pollutant"),
+        F.lit("ppb").alias("unit"),
+        F.col("arithmetic_mean").cast("double").alias("daily_mean"),
+        F.col("observation_count").cast("int").alias("observed_hours"),
+        F.lit(24).alias("expected_hours"),
+        F.col("source_file"),
+    )
+    .withColumn(
+        "sensor_key",
+        F.concat_ws("-", "aqs_site_id", "parameter_code", "poc"),
+    )
+    .withColumn("coverage_ratio", F.col("observed_hours") / F.col("expected_hours"))
+    .withColumn("has_low_coverage", F.col("observed_hours") < 18)
+    .withColumn(
+        "has_invalid_daily_mean",
+        F.col("daily_mean").isNull()
+        | F.isnan("daily_mean")
+        | (F.col("daily_mean") < 0),
+    )
+)
+
+checks = epa_silver.agg(
+    F.count("*").alias("rows"),
+    F.countDistinct("sensor_key", "local_date").alias("unique_keys"),
+).first()
+
+if checks.rows == 0 or checks.rows != checks.unique_keys:
+    raise ValueError("EPA NO2 is empty or has duplicate or missing sensor-date keys.")
+
+epa_silver.write.format("delta").mode("overwrite").saveAsTable(target_table)
+
+display(
+    spark.table(target_table)
+    .groupBy(F.year("local_date").alias("year"))
+    .agg(
+        F.count("*").alias("rows_saved"),
+        F.countDistinct("aqs_site_id").alias("stations"),
+        F.sum(F.col("has_low_coverage").cast("int")).alias("low_coverage_days"),
+    )
+    .orderBy("year")
+)
 
 # METADATA ********************
 

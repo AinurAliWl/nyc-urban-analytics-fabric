@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Dataflow",
+    "displayName": "df_ingest_epa_no2"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "f290de90-fbb8-b5d5-4c82-9052ab331b27"
+  }
+}

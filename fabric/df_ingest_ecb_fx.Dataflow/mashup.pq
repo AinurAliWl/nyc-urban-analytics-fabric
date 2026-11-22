@@ -7,7 +7,7 @@ shared ecb_fx_daily_raw = let
         "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A",
         [
             Query = [
-                startPeriod = "2023-12-29",
+                startPeriod = "2021-12-31",
                 endPeriod = "2024-02-29",
                 format = "csvdata"
             ]
