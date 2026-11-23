@@ -27,9 +27,11 @@
 # MAGIC     ON t.date_key = d.date_key
 # MAGIC LEFT JOIN dbo.FactAirQualityDaily AS a
 # MAGIC     ON a.date_key = d.date_key
-# MAGIC     AND a.sensor_id = 673
-# MAGIC     AND a.pollutant = 'pm25'
-# MAGIC     AND a.has_invalid_daily_mean = 0
+# MAGIC    AND a.sensor_key = 'openaq:673'
+# MAGIC    AND a.pollutant = 'pm25'
+# MAGIC    AND a.has_invalid_daily_mean = 0
+# MAGIC WHERE d.calendar_date >= '20240101'
+# MAGIC   AND d.calendar_date < '20240301'
 # MAGIC ORDER BY d.calendar_date;
 
 # METADATA ********************
@@ -311,3 +313,212 @@ plt.show()
 # META   "language": "sql",
 # META   "language_group": "jupyter_python"
 # META }
+
+# CELL ********************
+
+# MAGIC %%tsql -artifact wh_gold -type Warehouse -bind air_year_comparison
+# MAGIC WITH valid_days AS (
+# MAGIC     SELECT
+# MAGIC         d.calendar_year,
+# MAGIC         d.calendar_month,
+# MAGIC         DAY(d.calendar_date) AS day_of_month,
+# MAGIC         a.sensor_key,
+# MAGIC         a.station_name,
+# MAGIC         a.pollutant,
+# MAGIC         a.unit,
+# MAGIC         a.daily_mean
+# MAGIC     FROM dbo.FactAirQualityDaily AS a
+# MAGIC     JOIN dbo.DimDate AS d ON d.date_key = a.date_key
+# MAGIC     WHERE d.calendar_year IN (2022, 2024)
+# MAGIC       AND d.calendar_month IN (1, 2)
+# MAGIC       AND a.has_invalid_daily_mean = 0
+# MAGIC       AND a.coverage_ratio >= 0.75
+# MAGIC )
+# MAGIC SELECT
+# MAGIC     b.pollutant,
+# MAGIC     b.unit,
+# MAGIC     b.station_name,
+# MAGIC     b.sensor_key,
+# MAGIC     COUNT(*) AS matched_days,
+# MAGIC     CAST(AVG(b.daily_mean) AS decimal(10, 2)) AS avg_2022,
+# MAGIC     CAST(AVG(c.daily_mean) AS decimal(10, 2)) AS avg_2024,
+# MAGIC     CAST(AVG(c.daily_mean - b.daily_mean) AS decimal(10, 2)) AS change_2024_vs_2022
+# MAGIC FROM valid_days AS b
+# MAGIC JOIN valid_days AS c
+# MAGIC     ON c.sensor_key = b.sensor_key
+# MAGIC    AND c.pollutant = b.pollutant
+# MAGIC    AND c.unit = b.unit
+# MAGIC    AND c.calendar_month = b.calendar_month
+# MAGIC    AND c.day_of_month = b.day_of_month
+# MAGIC WHERE b.calendar_year = 2022
+# MAGIC   AND c.calendar_year = 2024
+# MAGIC GROUP BY b.pollutant, b.unit, b.station_name, b.sensor_key
+# MAGIC ORDER BY b.pollutant, b.station_name;
+
+# METADATA ********************
+
+# META {
+# META   "language": "sql",
+# META   "language_group": "jupyter_python"
+# META }
+
+# CELL ********************
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+air = pd.DataFrame(air_year_comparison).copy()
+
+for column in ["avg_2022", "avg_2024", "matched_days"]:
+    air[column] = pd.to_numeric(air[column])
+
+fig, axes = plt.subplots(
+    2, 1, figsize=(10, 6), gridspec_kw={"height_ratios": [4, 2]}
+)
+
+panels = [("no2", "NO₂ (ppb)"), ("pm25", "PM2.5 (µg/m³)")]
+
+for ax, (pollutant, xlabel) in zip(axes, panels):
+    stations = air.loc[air["pollutant"].eq(pollutant)].sort_values(
+        "avg_2022", ascending=False
+    )
+    positions = range(len(stations))
+    station_labels = [
+        f"{name} (n={days})"
+        for name, days in zip(stations["station_name"], stations["matched_days"])
+    ]
+
+    ax.barh(
+        [y - 0.18 for y in positions], stations["avg_2022"],
+        height=0.34, label="2022", color="#64748b"
+    )
+    ax.barh(
+        [y + 0.18 for y in positions], stations["avg_2024"],
+        height=0.34, label="2024", color="#2563eb"
+    )
+    ax.set_yticks(list(positions), station_labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel)
+    ax.set_axisbelow(True)
+    ax.grid(axis="x", alpha=0.25)
+
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False)
+fig.suptitle("NYC air quality on matched dates | Jan–Feb 2022 and 2024")
+fig.subplots_adjust(left=0.36, right=0.96, top=0.88, bottom=0.14, hspace=0.56)
+plt.show()
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "jupyter_python"
+# META }
+
+# CELL ********************
+
+# MAGIC %%tsql -artifact wh_gold -type Warehouse -bind taxi_air_daily
+# MAGIC WITH station_borough AS (
+# MAGIC     SELECT 'openaq:673' AS sensor_key, 'Manhattan' AS borough
+# MAGIC     UNION ALL SELECT 'openaq:1102', 'Bronx'
+# MAGIC     UNION ALL SELECT 'openaq:1152', 'Queens'
+# MAGIC     UNION ALL SELECT 'epa_aqs:36-005-0110-42602-1', 'Bronx'
+# MAGIC     UNION ALL SELECT 'epa_aqs:36-005-0133-42602-1', 'Bronx'
+# MAGIC     UNION ALL SELECT 'epa_aqs:36-081-0124-42602-1', 'Queens'
+# MAGIC     UNION ALL SELECT 'epa_aqs:36-081-0125-42602-1', 'Queens'
+# MAGIC ),
+# MAGIC taxi_by_borough_day AS (
+# MAGIC     SELECT
+# MAGIC         t.date_key,
+# MAGIC         z.borough,
+# MAGIC         SUM(t.trip_count) AS pickup_count
+# MAGIC     FROM dbo.FactTaxiDaily AS t
+# MAGIC     JOIN dbo.DimZone AS z ON z.location_id = t.pickup_location_id
+# MAGIC     GROUP BY t.date_key, z.borough
+# MAGIC )
+# MAGIC SELECT
+# MAGIC     d.calendar_date,
+# MAGIC     d.calendar_year,
+# MAGIC     s.borough,
+# MAGIC     a.station_name,
+# MAGIC     a.sensor_key,
+# MAGIC     a.pollutant,
+# MAGIC     a.unit,
+# MAGIC     t.pickup_count,
+# MAGIC     a.daily_mean
+# MAGIC FROM dbo.FactAirQualityDaily AS a
+# MAGIC JOIN dbo.DimDate AS d ON d.date_key = a.date_key
+# MAGIC JOIN station_borough AS s ON s.sensor_key = a.sensor_key
+# MAGIC JOIN taxi_by_borough_day AS t
+# MAGIC     ON t.date_key = a.date_key
+# MAGIC    AND t.borough = s.borough
+# MAGIC WHERE (
+# MAGIC        a.date_key BETWEEN 20220101 AND 20220228
+# MAGIC     OR a.date_key BETWEEN 20240101 AND 20240228
+# MAGIC )
+# MAGIC   AND a.has_invalid_daily_mean = 0
+# MAGIC   AND a.coverage_ratio >= 0.75
+# MAGIC ORDER BY d.calendar_year, a.pollutant, a.station_name, d.calendar_date;
+
+# METADATA ********************
+
+# META {
+# META   "language": "sql",
+# META   "language_group": "jupyter_python"
+# META }
+
+# CELL ********************
+
+import pandas as pd
+
+paired = pd.DataFrame(taxi_air_daily).copy()
+for column in ["pickup_count", "daily_mean"]:
+    paired[column] = pd.to_numeric(paired[column])
+
+paired = paired.dropna(subset=["pickup_count", "daily_mean"])
+
+group_columns = [
+    "pollutant", "unit", "borough", "station_name",
+    "sensor_key", "calendar_year",
+]
+
+results = []
+for key, days in paired.groupby(group_columns):
+    results.append({
+        **dict(zip(group_columns, key)),
+        "paired_days": len(days),
+        "avg_daily_pickups": days["pickup_count"].mean(),
+        "avg_concentration": days["daily_mean"].mean(),
+        "pearson_r": days["pickup_count"].corr(days["daily_mean"]),
+    })
+
+display(pd.DataFrame(results).round({
+    "avg_daily_pickups": 0,
+    "avg_concentration": 2,
+    "pearson_r": 3,
+}))
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "jupyter_python"
+# META }
+
+# MARKDOWN ********************
+
+# ### Findings: Yellow Taxi pickups and air quality
+# 
+# We compared daily Yellow Taxi pickups in each station's borough with
+# the station's daily pollutant concentration, from January 1 through
+# February 28 in 2022 and 2024. Measurements needed at least 75% coverage.
+# 
+# The clearest positive association was for NO₂ at IS 52 in the Bronx
+# (r = 0.425 in 2022 and r = 0.333 in 2024). At CCNY in Manhattan,
+# the PM2.5 association was negative in 2022 (r = −0.293) and close
+# to zero in 2024 (r = −0.005).
+# 
+# Among the six sensors present in both years, the absolute correlation
+# was smaller in 2024 for every sensor. Available dates varied by sensor
+# and year. These are descriptive associations between borough-level
+# pickup counts and individual monitoring stations.
