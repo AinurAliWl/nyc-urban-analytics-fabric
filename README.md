@@ -19,17 +19,19 @@ The analysis uses **January and February 2022 and 2024**. The current Gold snaps
 
 ```mermaid
 flowchart TD
-    TLC["TLC Yellow Taxi files"] --> Copy["Copy activity"]
-    Other["Air data, FX, GDP, and zones"] --> Dataflows["Dataflow Gen2"]
-    Copy --> Bronze["Bronze · lh_bronze"]
+    TLC["Taxi files"] --> Copy["Copy"]
+    Other["Other data"] --> Dataflows["Dataflows"]
+    Copy --> Bronze["Bronze"]
     Dataflows --> Bronze
-    Bronze --> Transform["PySpark transformations"]
-    Transform --> Silver["Silver · lh_silver"]
-    Silver --> Gold["Gold · wh_gold"]
-    Silver --> Check["Silver-to-Gold trip reconciliation"]
+    Bronze --> Transform["PySpark"]
+    Transform --> Silver["Silver"]
+    Silver --> Gold["Gold"]
+    Silver --> Check["Trip check"]
     Gold --> Check
-    Gold --> Analysis["Analytics notebook"]
+    Gold --> Analysis["Analytics"]
 ```
+
+The taxi branch copies NYC TLC Parquet files. The other branch uses Dataflow Gen2 for air quality, exchange rates, GDP, and taxi zones. The Fabric items for the three layers are `lh_bronze`, `lh_silver`, and `wh_gold`. The trip check compares Silver and Gold, and the analytics notebook reads Gold.
 
 **Bronze** holds the original taxi files, staged air-quality extracts, and raw tables written by the dataflows. **Silver** holds typed Delta tables. `nb_02_transform_taxi` removes exact duplicates, aligns incoming files with the Silver schema, and writes one source-month partition at a time. `nb_03_transform_reference_data` prepares the air-quality, exchange-rate, GDP, and taxi-zone tables.
 
