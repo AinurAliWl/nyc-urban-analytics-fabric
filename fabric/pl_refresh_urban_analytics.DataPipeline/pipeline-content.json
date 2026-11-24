@@ -1,0 +1,442 @@
+{
+  "properties": {
+    "activities": [
+      {
+        "type": "InvokePipeline",
+        "typeProperties": {
+          "parameters": {
+            "source_year": {
+              "value": "@pipeline().parameters.source_year",
+              "type": "Expression"
+            },
+            "source_month": {
+              "value": "@pipeline().parameters.source_month",
+              "type": "Expression"
+            }
+          },
+          "waitOnCompletion": true,
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "pipelineId": "c16e972a-557b-b989-4d20-c7e4de275feb",
+          "operationType": "InvokeFabricPipeline"
+        },
+        "externalReferences": {
+          "connection": "84d968a0-4d4f-4886-ad59-6cc8429849dc"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_taxi_bronze_and_silver",
+        "dependsOn": []
+      },
+      {
+        "type": "RefreshDataflow",
+        "typeProperties": {
+          "dataflowId": "cac2aad6-0521-af8a-40a2-1ee7b2965c0a",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "notifyOption": "NoNotification",
+          "dataflowType": "DataflowFabric",
+          "executeMashupQueriesOnly": true
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_openaq",
+        "dependsOn": [
+          {
+            "activity": "refresh_taxi_bronze_and_silver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "RefreshDataflow",
+        "typeProperties": {
+          "dataflowId": "f290de90-fbb8-b5d5-4c82-9052ab331b27",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "notifyOption": "NoNotification",
+          "dataflowType": "DataflowFabric",
+          "executeMashupQueriesOnly": true
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_epa_no2",
+        "dependsOn": [
+          {
+            "activity": "refresh_openaq",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "RefreshDataflow",
+        "typeProperties": {
+          "dataflowId": "3251b901-fa92-886f-484d-1ab9bca074da",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "notifyOption": "NoNotification",
+          "dataflowType": "DataflowFabric",
+          "executeMashupQueriesOnly": true
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_ecb_fx",
+        "dependsOn": [
+          {
+            "activity": "refresh_epa_no2",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "RefreshDataflow",
+        "typeProperties": {
+          "dataflowId": "260bb7b0-b0ad-b706-4388-d46bf2e461c0",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "notifyOption": "NoNotification",
+          "dataflowType": "DataflowFabric",
+          "executeMashupQueriesOnly": true
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_worldbank_gdp",
+        "dependsOn": [
+          {
+            "activity": "refresh_ecb_fx",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "RefreshDataflow",
+        "typeProperties": {
+          "dataflowId": "b271a3be-20a5-b6c1-449e-d89410037eec",
+          "workspaceId": "00000000-0000-0000-0000-000000000000",
+          "notifyOption": "NoNotification",
+          "dataflowType": "DataflowFabric",
+          "executeMashupQueriesOnly": true
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_taxi_zones",
+        "dependsOn": [
+          {
+            "activity": "refresh_worldbank_gdp",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "TridentNotebook",
+        "typeProperties": {
+          "notebookId": "1b7715e8-8cef-8de2-4852-1ab128caaba0",
+          "workspaceId": "00000000-0000-0000-0000-000000000000"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "transform_reference_data_silver",
+        "dependsOn": [
+          {
+            "activity": "refresh_taxi_zones",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "RefreshSqlEndpoint",
+        "typeProperties": {
+          "workspaceId": "ff9401b1-9897-44bb-a371-52cdaf97b9b3",
+          "sqlEndpointId": "f6dbdb48-9bd8-488d-872b-765df4fa2456",
+          "recreateTables": false
+        },
+        "externalReferences": {
+          "connection": "6cb65a38-1d27-4005-9e95-e17a89920f8e"
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "refresh_silver_sql_endpoint",
+        "dependsOn": [
+          {
+            "activity": "transform_reference_data_silver",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "DECLARE @start_date date = '2022-01-01';\r\nDECLARE @end_date date = '2024-02-29';\r\n\r\nBEGIN TRY\r\n    BEGIN TRANSACTION;\r\n\r\n    IF OBJECT_ID('dbo.DimDate', 'U') IS NULL\r\n    BEGIN\r\n        CREATE TABLE dbo.DimDate (\r\n            date_key int NOT NULL,\r\n            calendar_date date NOT NULL,\r\n            calendar_year int NOT NULL,\r\n            calendar_quarter int NOT NULL,\r\n            calendar_month int NOT NULL,\r\n            day_of_month int NOT NULL,\r\n            is_weekend bit NOT NULL\r\n        );\r\n    END;\r\n\r\n    IF OBJECT_ID('dbo.DimZone', 'U') IS NULL\r\n    BEGIN\r\n        CREATE TABLE dbo.DimZone (\r\n            location_id int NOT NULL,\r\n            borough varchar(100) NULL,\r\n            zone_name varchar(200) NULL,\r\n            service_zone varchar(100) NULL\r\n        );\r\n    END;\r\n\r\n    DELETE FROM dbo.DimDate;\r\n\r\n    WITH calendar AS (\r\n        SELECT DATEADD(day, [value], @start_date) AS calendar_date\r\n        FROM GENERATE_SERIES(0, DATEDIFF(day, @start_date, @end_date), 1)\r\n    )\r\n    INSERT INTO dbo.DimDate (\r\n        date_key, calendar_date, calendar_year, calendar_quarter,\r\n        calendar_month, day_of_month, is_weekend\r\n    )\r\n    SELECT\r\n        YEAR(calendar_date) * 10000 + MONTH(calendar_date) * 100 + DAY(calendar_date),\r\n        calendar_date,\r\n        YEAR(calendar_date),\r\n        DATEPART(quarter, calendar_date),\r\n        MONTH(calendar_date),\r\n        DAY(calendar_date),\r\n        CASE\r\n            WHEN DATEDIFF(day, CAST('1900-01-01' AS date), calendar_date) % 7 IN (5, 6)\r\n                THEN 1\r\n            ELSE 0\r\n        END\r\n    FROM calendar;\r\n\r\n    DELETE FROM dbo.DimZone;\r\n\r\n    INSERT INTO dbo.DimZone (location_id, borough, zone_name, service_zone)\r\n    SELECT location_id, borough, zone_name, service_zone\r\n    FROM [lh_silver].[dbo].[taxi_zones];\r\n\r\n    COMMIT TRANSACTION;\r\nEND TRY\r\nBEGIN CATCH\r\n    IF @@TRANCOUNT > 0\r\n        ROLLBACK TRANSACTION;\r\n\r\n    THROW;\r\nEND CATCH;",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_gold",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "ded7292a-eebb-b3b1-497e-f15166814acb",
+              "endpoint": "cy4uqp7pcj5uraoorxh37rirna-weazj74xtc5uji3rklg27f5zwm.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "load_dim_date_and_zone",
+        "dependsOn": [
+          {
+            "activity": "refresh_silver_sql_endpoint",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "BEGIN TRY\r\n    BEGIN TRANSACTION;\r\n\r\n    IF OBJECT_ID('dbo.FactTaxiDaily', 'U') IS NULL\r\n    BEGIN\r\n        CREATE TABLE dbo.FactTaxiDaily (\r\n            date_key int NOT NULL,\r\n            pickup_location_id int NOT NULL,\r\n            trip_count bigint NOT NULL,\r\n            total_amount_usd decimal(28, 2) NULL,\r\n            amount_trip_count bigint NOT NULL,\r\n            distance_sum_miles decimal(28, 4) NULL,\r\n            valid_distance_trip_count bigint NOT NULL,\r\n            duration_sum_seconds bigint NULL,\r\n            valid_duration_trip_count bigint NOT NULL,\r\n            fare_sum_usd decimal(28, 2) NULL,\r\n            fare_trip_count bigint NULL\r\n        );\r\n    END;\r\n\r\n    DELETE FROM dbo.FactTaxiDaily;\r\n\r\n    WITH prepared_trips AS (\r\n        SELECT\r\n            d.date_key,\r\n            COALESCE(z.location_id, 264) AS pickup_location_id,\r\n            CAST(t.total_amount AS decimal(18, 2)) AS amount_usd,\r\n            CAST(t.fare_amount AS decimal(18, 2)) AS fare_usd,\r\n            CASE WHEN t.has_invalid_distance = 0\r\n                THEN CAST(t.trip_distance AS decimal(18, 4))\r\n            END AS valid_distance_miles,\r\n            CASE WHEN t.has_invalid_duration = 0\r\n                THEN CAST(t.trip_duration_seconds AS bigint)\r\n            END AS valid_duration_seconds\r\n        FROM [lh_silver].[dbo].[taxi_trips] AS t\r\n        LEFT JOIN dbo.DimDate AS d\r\n            ON d.calendar_date = t.pickup_date\r\n        LEFT JOIN dbo.DimZone AS z\r\n            ON z.location_id = t.PULocationID\r\n        WHERE t.is_outside_source_month = 0\r\n    )\r\n    INSERT INTO dbo.FactTaxiDaily (\r\n        date_key, pickup_location_id, trip_count,\r\n        total_amount_usd, amount_trip_count,\r\n        distance_sum_miles, valid_distance_trip_count,\r\n        duration_sum_seconds, valid_duration_trip_count,\r\n        fare_sum_usd, fare_trip_count\r\n    )\r\n    SELECT\r\n        date_key,\r\n        pickup_location_id,\r\n        COUNT_BIG(*),\r\n        SUM(amount_usd),\r\n        COUNT_BIG(amount_usd),\r\n        SUM(valid_distance_miles),\r\n        COUNT_BIG(valid_distance_miles),\r\n        SUM(valid_duration_seconds),\r\n        COUNT_BIG(valid_duration_seconds),\r\n        SUM(fare_usd),\r\n        COUNT_BIG(fare_usd)\r\n    FROM prepared_trips\r\n    GROUP BY date_key, pickup_location_id;\r\n\r\n    COMMIT TRANSACTION;\r\nEND TRY\r\nBEGIN CATCH\r\n    IF @@TRANCOUNT > 0\r\n        ROLLBACK TRANSACTION;\r\n\r\n    THROW;\r\nEND CATCH;",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_gold",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "ded7292a-eebb-b3b1-497e-f15166814acb",
+              "endpoint": "cy4uqp7pcj5uraoorxh37rirna-weazj74xtc5uji3rklg27f5zwm.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "load_fact_taxi_daily",
+        "dependsOn": [
+          {
+            "activity": "load_dim_date_and_zone",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "BEGIN TRY\r\n    BEGIN TRANSACTION;\r\n\r\n    IF OBJECT_ID('dbo.FactAirQualityDaily', 'U') IS NULL\r\n    BEGIN\r\n        CREATE TABLE dbo.FactAirQualityDaily (\r\n            date_key int NOT NULL,\r\n            location_id bigint NOT NULL,\r\n            sensor_id bigint NOT NULL,\r\n            pollutant varchar(20) NOT NULL,\r\n            unit varchar(20) NOT NULL,\r\n            daily_mean float NULL,\r\n            coverage_ratio float NULL,\r\n            observed_hours int NULL,\r\n            expected_hours int NULL,\r\n            has_invalid_daily_mean bit NOT NULL,\r\n            source_system varchar(20) NULL,\r\n            sensor_key varchar(80) NULL,\r\n            station_name varchar(150) NULL\r\n        );\r\n    END;\r\n\r\n    DELETE FROM dbo.FactAirQualityDaily;\r\n\r\n    WITH air_measurements AS (\r\n        SELECT\r\n            a.local_date,\r\n            a.location_id,\r\n            a.sensor_id,\r\n            a.pollutant,\r\n            a.unit,\r\n            a.daily_mean,\r\n            a.coverage_ratio,\r\n            a.observed_hours,\r\n            a.expected_hours,\r\n            a.has_invalid_daily_mean,\r\n            'openaq' AS source_system,\r\n            CONCAT('openaq:', a.sensor_id) AS sensor_key,\r\n            CASE a.sensor_id\r\n                WHEN 673 THEN 'CCNY'\r\n                WHEN 1102 THEN 'Bronx - IS52'\r\n                WHEN 1152 THEN 'Queens'\r\n                ELSE CONCAT('OpenAQ sensor ', a.sensor_id)\r\n            END AS station_name\r\n        FROM [lh_silver].[dbo].[air_quality_daily] AS a\r\n\r\n        UNION ALL\r\n\r\n        SELECT\r\n            e.local_date,\r\n            s.site_id AS location_id,\r\n            s.site_id * 1000 + CAST(e.poc AS bigint) AS sensor_id,\r\n            e.pollutant,\r\n            e.unit,\r\n            e.daily_mean,\r\n            e.coverage_ratio,\r\n            e.observed_hours,\r\n            e.expected_hours,\r\n            e.has_invalid_daily_mean,\r\n            e.source_system,\r\n            CONCAT('epa_aqs:', e.sensor_key),\r\n            e.station_name\r\n        FROM [lh_silver].[dbo].[epa_no2_daily] AS e\r\n        CROSS APPLY (\r\n            SELECT CAST(REPLACE(e.aqs_site_id, '-', '') AS bigint) AS site_id\r\n        ) AS s\r\n    )\r\n    INSERT INTO dbo.FactAirQualityDaily (\r\n        date_key, location_id, sensor_id, pollutant, unit, daily_mean,\r\n        coverage_ratio, observed_hours, expected_hours, has_invalid_daily_mean,\r\n        source_system, sensor_key, station_name\r\n    )\r\n    SELECT\r\n        d.date_key, a.location_id, a.sensor_id, a.pollutant, a.unit, a.daily_mean,\r\n        a.coverage_ratio, a.observed_hours, a.expected_hours, a.has_invalid_daily_mean,\r\n        a.source_system, a.sensor_key, a.station_name\r\n    FROM air_measurements AS a\r\n    LEFT JOIN dbo.DimDate AS d\r\n        ON d.calendar_date = a.local_date;\r\n\r\n    COMMIT TRANSACTION;\r\nEND TRY\r\nBEGIN CATCH\r\n    IF @@TRANCOUNT > 0\r\n        ROLLBACK TRANSACTION;\r\n\r\n    THROW;\r\nEND CATCH;",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_gold",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "ded7292a-eebb-b3b1-497e-f15166814acb",
+              "endpoint": "cy4uqp7pcj5uraoorxh37rirna-weazj74xtc5uji3rklg27f5zwm.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "load_fact_air_quality_daily",
+        "dependsOn": [
+          {
+            "activity": "load_fact_taxi_daily",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "BEGIN TRY\r\n    BEGIN TRANSACTION;\r\n\r\n    IF OBJECT_ID('dbo.DimFX', 'U') IS NULL\r\n    BEGIN\r\n        CREATE TABLE dbo.DimFX (\r\n            date_key int NOT NULL,\r\n            base_currency varchar(3) NOT NULL,\r\n            quote_currency varchar(3) NOT NULL,\r\n            usd_per_eur decimal(18, 8) NOT NULL,\r\n            rate_source_date date NOT NULL,\r\n            is_carried_forward bit NOT NULL\r\n        );\r\n    END;\r\n\r\n    IF OBJECT_ID('dbo.DimGDP', 'U') IS NULL\r\n    BEGIN\r\n        CREATE TABLE dbo.DimGDP (\r\n            country_code varchar(3) NOT NULL,\r\n            country_name varchar(100) NOT NULL,\r\n            indicator_code varchar(32) NOT NULL,\r\n            gdp_year int NOT NULL,\r\n            gdp_usd decimal(20, 2) NULL\r\n        );\r\n    END;\r\n\r\n    DELETE FROM dbo.DimFX;\r\n\r\n    WITH ranked_rates AS (\r\n        SELECT\r\n            d.date_key,\r\n            d.calendar_date,\r\n            fx.base_currency,\r\n            fx.quote_currency,\r\n            fx.usd_per_eur,\r\n            fx.fx_date AS rate_source_date,\r\n            ROW_NUMBER() OVER (\r\n                PARTITION BY d.date_key\r\n                ORDER BY fx.fx_date DESC\r\n            ) AS rate_rank\r\n        FROM dbo.DimDate AS d\r\n        LEFT JOIN [lh_silver].[dbo].[fx_rates_daily] AS fx\r\n            ON fx.fx_date <= d.calendar_date\r\n            AND fx.base_currency = 'EUR'\r\n            AND fx.quote_currency = 'USD'\r\n    )\r\n    INSERT INTO dbo.DimFX (\r\n        date_key, base_currency, quote_currency, usd_per_eur,\r\n        rate_source_date, is_carried_forward\r\n    )\r\n    SELECT\r\n        date_key,\r\n        base_currency,\r\n        quote_currency,\r\n        usd_per_eur,\r\n        rate_source_date,\r\n        CASE WHEN rate_source_date < calendar_date THEN 1 ELSE 0 END\r\n    FROM ranked_rates\r\n    WHERE rate_rank = 1;\r\n\r\n    DELETE FROM dbo.DimGDP;\r\n\r\n    INSERT INTO dbo.DimGDP (\r\n        country_code, country_name, indicator_code, gdp_year, gdp_usd\r\n    )\r\n    SELECT country_code, country_name, indicator_code, gdp_year, gdp_usd\r\n    FROM [lh_silver].[dbo].[gdp_annual];\r\n\r\n    COMMIT TRANSACTION;\r\nEND TRY\r\nBEGIN CATCH\r\n    IF @@TRANCOUNT > 0\r\n        ROLLBACK TRANSACTION;\r\n\r\n    THROW;\r\nEND CATCH;",
+                "type": "Expression"
+              },
+              "type": "NonQuery"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_gold",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "ded7292a-eebb-b3b1-497e-f15166814acb",
+              "endpoint": "cy4uqp7pcj5uraoorxh37rirna-weazj74xtc5uji3rklg27f5zwm.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "load_dim_fx_and_gdp",
+        "dependsOn": [
+          {
+            "activity": "load_fact_air_quality_daily",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      },
+      {
+        "type": "Script",
+        "typeProperties": {
+          "scripts": [
+            {
+              "text": {
+                "value": "DECLARE @months_checked int;\r\nDECLARE @months_with_differences int;\r\nDECLARE @total_trips bigint;\r\n\r\nWITH silver_monthly AS (\r\n    SELECT\r\n        YEAR(pickup_date) * 100 + MONTH(pickup_date) AS month_key,\r\n        COUNT_BIG(*) AS trip_count,\r\n        COUNT(DISTINCT pickup_date) AS days_loaded\r\n    FROM [lh_silver].[dbo].[taxi_trips]\r\n    WHERE is_outside_source_month = 0\r\n    GROUP BY YEAR(pickup_date), MONTH(pickup_date)\r\n),\r\ngold_monthly AS (\r\n    SELECT\r\n        date_key / 100 AS month_key,\r\n        SUM(trip_count) AS trip_count,\r\n        COUNT(DISTINCT date_key) AS days_loaded\r\n    FROM dbo.FactTaxiDaily\r\n    GROUP BY date_key / 100\r\n)\r\nSELECT\r\n    @months_checked = COUNT(*),\r\n    @months_with_differences = COUNT(CASE\r\n        WHEN s.month_key IS NULL OR g.month_key IS NULL\r\n          OR s.trip_count <> g.trip_count\r\n          OR s.days_loaded <> g.days_loaded\r\n        THEN 1\r\n    END),\r\n    @total_trips = SUM(s.trip_count)\r\nFROM silver_monthly AS s\r\nFULL OUTER JOIN gold_monthly AS g\r\n    ON s.month_key = g.month_key;\r\n\r\nIF @months_checked = 0 OR @months_with_differences > 0\r\nBEGIN\r\n    THROW 50001, 'Taxi validation failed. Check Silver and Gold monthly counts.', 1;\r\nEND;\r\n\r\nSELECT\r\n    @months_checked AS months_checked,\r\n    @months_with_differences AS months_with_differences,\r\n    @total_trips AS total_trips;",
+                "type": "Expression"
+              },
+              "type": "Query"
+            }
+          ],
+          "scriptBlockExecutionTimeout": "02:00:00"
+        },
+        "linkedService": {
+          "name": "wh_gold",
+          "properties": {
+            "type": "DataWarehouse",
+            "typeProperties": {
+              "artifactId": "ded7292a-eebb-b3b1-497e-f15166814acb",
+              "endpoint": "cy4uqp7pcj5uraoorxh37rirna-weazj74xtc5uji3rklg27f5zwm.datawarehouse.fabric.microsoft.com",
+              "workspaceId": "00000000-0000-0000-0000-000000000000"
+            },
+            "annotations": []
+          }
+        },
+        "policy": {
+          "timeout": "0.12:00:00",
+          "retry": 0,
+          "retryIntervalInSeconds": 30,
+          "secureInput": false,
+          "secureOutput": false
+        },
+        "name": "validate_gold_taxi_daily",
+        "dependsOn": [
+          {
+            "activity": "load_dim_fx_and_gdp",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ]
+      }
+    ],
+    "parameters": {
+      "source_year": {
+        "type": "int",
+        "defaultValue": 2024
+      },
+      "source_month": {
+        "type": "int",
+        "defaultValue": 1
+      }
+    }
+  }
+}

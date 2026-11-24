@@ -1,0 +1,34 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/schedules/1.0.0/schema.json",
+  "schedules": [
+    {
+      "enabled": true,
+      "enabledControlType": "UserEnabled",
+      "jobType": "Execute",
+      "configuration": {
+        "type": "Weekly",
+        "startDateTime": "2026-11-24T00:00:00",
+        "endDateTime": "2026-12-11T23:59:00",
+        "localTimeZoneId": "West Asia Standard Time",
+        "times": [
+          "18:40"
+        ],
+        "weekdays": [
+          "Tuesday"
+        ]
+      },
+      "parameters": [
+        {
+          "name": "source_year",
+          "value": 2024,
+          "type": "Integer"
+        },
+        {
+          "name": "source_month",
+          "value": 2,
+          "type": "Integer"
+        }
+      ]
+    }
+  ]
+}
