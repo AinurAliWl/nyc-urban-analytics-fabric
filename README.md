@@ -69,6 +69,13 @@ The tested schedule was configured for **Tuesdays at 18:40 (UTC+05:00)** with `s
 
 The air-quality fact contains **293 PM2.5** and **468 NO₂** daily records in the validated snapshot. Gold has a valid EUR/USD rate for **all 790 days** in its current calendar. On days without a published rate, Gold carries forward the most recent available ECB rate. The notebook converts each day's USD total at that day's rate before aggregating to a month.
 
+## Data Governance
+
+- **Access.** Fabric workspace roles and item permissions govern access to the Lakehouses and Warehouse. Grant write access to maintainers and share the Gold items needed by reviewers with read permissions. [Fabric permission model](https://learn.microsoft.com/fabric/security/permission-model)
+- **Credentials.** Pipeline activities use Fabric connections configured with an organizational account. The OpenAQ Dataflow reads staged JSON files. Keep the API key used to download those files out of Git, notebooks, and documentation. [Fabric pipeline connections](https://learn.microsoft.com/en-us/fabric/data-factory/invoke-pipeline-activity)
+- **Traceability.** Bronze keeps the source files. Silver taxi rows carry the source file, year, and month, and the Gold air-quality fact retains the provider and source-qualified sensor key.
+- **Data quality.** `validate_gold_taxi_daily` fails the refresh if Silver and Gold differ in monthly trip counts or distinct day counts, or if there are no months to compare. The Warehouse validation queries cover air-quality record counts and duplicate sensor-days, and check exchange-rate coverage.
+
 ## Analytics
 
 `nb_04_analyze_gold` shows trip counts by day and borough, the busiest pickup zones, metered fares, and total trip amounts in USD and EUR. It compares pollution across stations and years. The `DimGDP` table provides annual US economic context.
