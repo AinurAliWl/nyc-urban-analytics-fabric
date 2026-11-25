@@ -56,7 +56,7 @@ The taxi branch copies NYC TLC Parquet files. The other branch uses Dataflow Gen
 
 The pipeline refreshes the selected taxi month and processes the reference dataflows, transforms their outputs in Silver, syncs the Silver SQL endpoint, rebuilds the Gold tables, and runs the taxi reconciliation. Rerunning a taxi month replaces that partition in Silver.
 
-The tested schedule was configured for **Tuesdays at 18:40 (UTC+05:00)** with `source_year = 2024` and `source_month = 2`. The scheduled run completed with `Succeeded`. The capacity must be active when the schedule fires.
+The Fabric schedule is configured to run **daily** with `source_year = 2024` and `source_month = 2`. A scheduled test run completed with `Succeeded`. The capacity must be active when the schedule fires.
 
 ## Validation
 
