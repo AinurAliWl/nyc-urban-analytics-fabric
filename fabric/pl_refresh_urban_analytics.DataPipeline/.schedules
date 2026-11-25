@@ -6,15 +6,12 @@
       "enabledControlType": "UserEnabled",
       "jobType": "Execute",
       "configuration": {
-        "type": "Weekly",
-        "startDateTime": "2026-11-24T00:00:00",
+        "type": "Daily",
+        "startDateTime": "2026-11-25T00:00:00",
         "endDateTime": "2026-12-11T23:59:00",
         "localTimeZoneId": "West Asia Standard Time",
         "times": [
-          "18:40"
-        ],
-        "weekdays": [
-          "Tuesday"
+          "12:30"
         ]
       },
       "parameters": [
