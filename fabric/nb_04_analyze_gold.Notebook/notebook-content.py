@@ -118,7 +118,7 @@ display(results.round({
 
 # CELL ********************
 
-# MAGIC %%tsql -artifact wh_gold -type Warehouse
+# MAGIC %%tsql -artifact wh_gold -type Warehouse -bind monthly_trip_amounts
 # MAGIC 
 # MAGIC WITH taxi_by_day AS (
 # MAGIC     SELECT
@@ -151,6 +151,53 @@ display(results.round({
 
 # META {
 # META   "language": "sql",
+# META   "language_group": "jupyter_python"
+# META }
+
+# CELL ********************
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+monthly = pd.DataFrame(monthly_trip_amounts).sort_values(
+    ["calendar_year", "calendar_month"]
+)
+
+month_labels = pd.to_datetime({
+    "year": monthly["calendar_year"],
+    "month": monthly["calendar_month"],
+    "day": 1,
+}).dt.strftime("%b %Y")
+
+positions = range(len(monthly))
+fig, ax = plt.subplots(figsize=(10, 4.5), layout="constrained")
+
+for column, currency, offset, color in [
+    ("total_amount_usd", "USD", -0.19, "#2563eb"),
+    ("total_amount_eur", "EUR", 0.19, "#15803d"),
+]:
+    bars = ax.bar(
+        [position + offset for position in positions],
+        pd.to_numeric(monthly[column]) / 1_000_000,
+        width=0.36,
+        label=currency,
+        color=color,
+    )
+    ax.bar_label(bars, fmt="%.1f", padding=3)
+
+ax.set_xticks(list(positions), month_labels)
+ax.set_ylabel("Total trip amount (millions)")
+ax.set_title("NYC Yellow Taxi monthly trip amounts in USD and EUR")
+ax.margins(y=0.15)
+ax.set_axisbelow(True)
+ax.grid(axis="y", alpha=0.25)
+ax.legend(frameon=False)
+plt.show()
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
 # META   "language_group": "jupyter_python"
 # META }
 
@@ -522,3 +569,82 @@ display(pd.DataFrame(results).round({
 # was smaller in 2024 for every sensor. Available dates varied by sensor
 # and year. These are descriptive associations between borough-level
 # pickup counts and individual monitoring stations.
+
+# CELL ********************
+
+# MAGIC %%tsql -artifact wh_gold -type Warehouse -bind no2_by_station_day
+# MAGIC SELECT
+# MAGIC     d.calendar_date,
+# MAGIC     d.calendar_year,
+# MAGIC     a.sensor_key,
+# MAGIC     COALESCE(a.station_name, a.sensor_key) AS station_name,
+# MAGIC     a.daily_mean AS no2_ppb
+# MAGIC FROM dbo.FactAirQualityDaily AS a
+# MAGIC JOIN dbo.DimDate AS d ON d.date_key = a.date_key
+# MAGIC WHERE d.calendar_year IN (2022, 2024)
+# MAGIC   AND d.calendar_month IN (1, 2)
+# MAGIC   AND a.pollutant = 'no2'
+# MAGIC   AND a.unit = 'ppb'
+# MAGIC   AND a.sensor_key IS NOT NULL
+# MAGIC   AND a.has_invalid_daily_mean = 0
+# MAGIC   AND a.coverage_ratio >= 0.75
+# MAGIC ORDER BY d.calendar_date, a.sensor_key;
+
+# METADATA ********************
+
+# META {
+# META   "language": "sql",
+# META   "language_group": "jupyter_python"
+# META }
+
+# CELL ********************
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
+
+no2 = pd.DataFrame(no2_by_station_day).copy()
+no2["calendar_date"] = pd.to_datetime(no2["calendar_date"])
+no2["no2_ppb"] = pd.to_numeric(no2["no2_ppb"])
+
+stations = (
+    no2[["sensor_key", "station_name"]]
+    .drop_duplicates("sensor_key")
+    .sort_values(["station_name", "sensor_key"])
+)
+
+years = sorted(no2["calendar_year"].unique())
+fig, axes = plt.subplots(
+    len(years), 1, figsize=(11, 7.3),
+    sharey=True, squeeze=False, layout="constrained"
+)
+
+for ax, year in zip(axes[:, 0], years):
+    dates = pd.date_range(f"{year}-01-01", f"{year}-03-01", inclusive="left")
+    series = (
+        no2.loc[no2["calendar_year"].eq(year)]
+        .pivot(index="calendar_date", columns="sensor_key", values="no2_ppb")
+        .reindex(index=dates, columns=stations["sensor_key"])
+    )
+    for station in stations.itertuples(index=False):
+        ax.plot(dates, series[station.sensor_key],
+                linewidth=1.3, label=station.station_name)
+
+    ax.set_title(str(year), loc="left")
+    ax.set_ylabel("NO₂ (ppb)")
+    ax.set_xlim(dates[0], dates[-1])
+    ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MO))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
+    ax.grid(axis="y", alpha=0.25)
+
+axes[0, 0].legend(ncol=2, frameon=False)
+axes[-1, 0].set_xlabel("New York local date")
+fig.suptitle("Daily NO₂ by NYC monitoring station | Jan–Feb")
+plt.show()
+
+# METADATA ********************
+
+# META {
+# META   "language": "python",
+# META   "language_group": "jupyter_python"
+# META }
